@@ -1,3 +1,3 @@
-from llm.chat import run_chat
+from llm.aria import run_chat
 
 run_chat()
