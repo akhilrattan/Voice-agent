@@ -22,3 +22,5 @@ voice/temp/
 # ─── Logs / temp ────────────────────────
 *.log
 *.tmp
+
+models/

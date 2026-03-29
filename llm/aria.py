@@ -10,7 +10,6 @@ client = OpenAI(
 )
 MODEL="openai/gpt-4o-mini"
 
-# Conversation history lives here — persists for the whole session
 messages = [
     {"role": "system", "content": """
 You are Aria, a sharp voice assistant.
@@ -24,16 +23,22 @@ def get_reply(user_text):
     """Send user text to LLM, return assistant reply string."""
     messages.append({"role": "user", "content": user_text})
 
-    response = client.chat.completions.create(
-        model=MODEL,
-        messages=messages,
-        temperature=0.7,
-        max_tokens=150
-    )
+    try:
+        response = client.chat.completions.create(
+            model=MODEL,
+            messages=messages,
+            temperature=0.7,
+            max_tokens=150
+        )
+        reply = response.choices[0].message.content
+        messages.append({"role": "assistant", "content": reply})
+        return reply
 
-    reply = response.choices[0].message.content
-    messages.append({"role": "assistant", "content": reply})
-    return reply
+    except Exception as e:
+        # Remove the user message we just added — keeps history clean
+        messages.pop()
+        print(f"LLM error: {e}")
+        return "Sorry, I ran into an issue. Please try again."
 
 def get_history():
     """Return conversation history — useful for debugging."""
