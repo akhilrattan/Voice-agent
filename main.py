@@ -1,5 +1,6 @@
 from voice.input import listen
 from llm.aria import get_reply
+from txt_to_speech.tts import speak          # ← new
 
 print("\nAria is ready. Press Enter to speak, Ctrl+C to quit.\n")
 
@@ -7,7 +8,7 @@ while True:
     try:
         input("[ Press Enter to speak ]")
 
-        # Step 1: voice.py handles recording + transcription
+        # Step 1: Record and transcribe
         user_text = listen()
 
         if not user_text:
@@ -16,11 +17,14 @@ while True:
 
         print(f"You said: {user_text}")
 
-        # Step 2: llm.py handles the reply
+        # Step 2: Get LLM reply
         print("Aria is thinking...")
         reply = get_reply(user_text)
 
-        print(f"\nAria: {reply}\n")
+        print(f"Aria: {reply}")
+
+        # Step 3: Speak the reply        ← new
+        speak(reply)
 
     except KeyboardInterrupt:
         print("\nAria: Goodbye!")
