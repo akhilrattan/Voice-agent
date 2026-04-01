@@ -1,36 +1,59 @@
-import time
+import os
 from voice.input import listen
-from llm.aria import get_reply_streaming
+from llm.aria import get_reply_streaming, refresh_system_prompt
 from txt_to_speech.tts import speak
+from web_search.tools import load_document
 
-print("\nAria is ready. Press Enter to speak, Ctrl+C to quit.\n")
+print("\nAria is ready.")
+print("  Press Enter with no text     → voice input")
+print("  Type a message               → chat with Aria")
+print("  Type 'load /path as label'   → load a PDF")
+print("  Type 'quit'                  → exit\n")
 
 while True:
     try:
-        input("[ Press Enter to speak ]")
+        user_input = input("[ Enter to speak | or type ]: ").strip()
 
-        # Step 1: Record and transcribe
-        t0 = time.time()
-        user_text = listen()
-        t1 = time.time()
+        # ── QUIT ───────────────────────────────────────────────────────────
+        if user_input.lower() == "quit":
+            print("Aria: Goodbye!")
+            break
 
-        if not user_text:
-            print("Didn't catch that. Try again.\n")
-            continue
+        # ── LOAD FILE ──────────────────────────────────────────────────────
+        elif user_input.lower().startswith("load ") and " as " in user_input:
+            parts = user_input[5:].split(" as ")
+            filepath = parts[0].strip()
+            label = parts[1].strip()
+            result = load_document(filepath, label)
+            refresh_system_prompt()
+            print(f"{result}\n")
 
-        print(f"You said: {user_text}")
-        print(f"[Whisper: {t1-t0:.2f}s]")
+        # ── VOICE INPUT ─────────────────────────────────────────────────────
+        elif user_input == "":
+            user_text = listen()
 
-        # Step 2+3: Stream LLM reply and speak each sentence immediately
-        print("Aria: ", end="", flush=True)
-        t2 = time.time()
+            if not user_text:
+                print("Didn't catch that. Try again.\n")
+                continue
 
-        for sentence in get_reply_streaming(user_text):
-            print(sentence, end=" ", flush=True)
-            speak(sentence)  # speak each sentence as it arrives
+            print(f"You said: {user_text}")
+            print("Aria: ", end="", flush=True)
 
-        t3 = time.time()
-        print(f"\n[LLM+TTS total: {t3-t2:.2f}s]\n")
+            for sentence in get_reply_streaming(user_text):
+                print(sentence, end=" ", flush=True)
+                speak(sentence)
+
+            print("\n")
+
+        # ── TEXT INPUT ──────────────────────────────────────────────────────
+        else:
+            print("Aria: ", end="", flush=True)
+
+            for sentence in get_reply_streaming(user_input):
+                print(sentence, end=" ", flush=True)
+                speak(sentence)
+
+            print("\n")
 
     except KeyboardInterrupt:
         print("\nAria: Goodbye!")

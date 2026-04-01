@@ -1,6 +1,10 @@
 from dotenv import load_dotenv
 import os
 from openai import OpenAI
+import json
+from web_search.tools import (
+    search_web, query_document , loaded_documents
+)
 
 load_dotenv()  # loads .env file
 
@@ -8,30 +12,156 @@ client = OpenAI(
     base_url="https://openrouter.ai/api/v1",
     api_key=os.getenv("OPENROUTER_API_KEY")
 )
+
 MODEL="openai/gpt-4o-mini"
 
-messages = [
-    {"role": "system", "content": """
+# Define the search tool for the LLM the description is what llm sees and it should be apt and concise
+
+
+# ── TOOL MAP ──────────────────────────────────────────────────────────────────
+TOOL_MAP = {
+    "search_web":     lambda args: search_web(args["query"]),
+    "query_document": lambda args: query_document(args["label"], args["question"]),
+}
+
+TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "search_web",
+            "description": "Search the web for current information, news, prices or recent events.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "The search query"
+                    }
+                },
+                "required": ["query"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "query_document",
+            "description": "Answer questions from a loaded PDF document using its label.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "label": {
+                        "type": "string",
+                        "description": "The label of the loaded document e.g. 'my resume'"
+                    },
+                    "question": {
+                        "type": "string",
+                        "description": "The question to answer from the document"
+                    }
+                },
+                "required": ["label", "question"]
+            }
+        }
+    },
+]
+
+# ── SYSTEM PROMPT ─────────────────────────────────────────────────────────────
+def build_system_prompt():
+    """Build system prompt dynamically based on what is currently loaded."""
+
+    if loaded_documents:
+        doc_lines = "\n".join([
+            f"- '{label}' ({len(chunks)} chunks)"
+            for label, chunks in loaded_documents.items()
+        ])
+        doc_section = f"Documents loaded and ready to query:\n{doc_lines}"
+    else:
+        doc_section = "No documents loaded yet."
+
+    return f"""
 You are Aria, a sharp voice assistant.
 Keep every reply under 2 sentences.
 Never use bullet points or markdown — you are speaking out loud.
 Speak naturally and concisely.
-"""}
-]
 
-def get_reply(user_text):
-    """Get LLM reply. Returns complete reply string."""
+You have three tools:
+- search_web: for current events, news, prices, weather
+- query_document: for questions about loaded PDF documents
+- query_context: for questions about pasted text
+
+{doc_section}
+
+Rules:
+- Use query_document when user asks about a loaded document — use exact label
+- Use query_context when user asks about pasted text
+- Use search_web for anything current or time-sensitive
+- Never make up answers — use a tool if unsure
+"""
+
+# ── CONVERSATION HISTORY ──────────────────────────────────────────────────────
+messages = [{"role": "system", "content": build_system_prompt()}]
+
+
+def refresh_system_prompt():
+    """
+    Rebuild and replace system prompt in place.
+    Call this after loading a document or adding context.
+    """
+    messages[0] = {"role": "system", "content": build_system_prompt()}
+
+
+# ── REPLY FUNCTIONS ───────────────────────────────────────────────────────────
+def get_reply_non_streaming(user_text):
+    """Get full reply — handles tool use internally."""
     messages.append({"role": "user", "content": user_text})
 
     try:
+        # Call 1 — LLM decides whether to use a tool
         response = client.chat.completions.create(
             model=MODEL,
             messages=messages,
             temperature=0.7,
-            max_tokens=150
+            max_tokens=150,
+            tools=TOOLS,
+            tool_choice="auto"
         )
-        reply = response.choices[0].message.content
-        messages.append({"role": "assistant", "content": reply})
+
+        message = response.choices[0].message
+
+        if message.tool_calls:
+            tool_call = message.tool_calls[0]
+            tool_name = tool_call.function.name
+            tool_args = json.loads(tool_call.function.arguments)
+
+            print(f"[Aria is using tool: {tool_name}]")
+
+            # Run the right function from TOOL_MAP
+            tool_result = TOOL_MAP[tool_name](tool_args)
+
+            # Add tool call and result to history
+            messages.append(message)
+            messages.append({
+                "role": "tool",
+                "tool_call_id": tool_call.id,
+                "content": str(tool_result)
+            })
+
+            # Call 2 — LLM answers using tool result
+            response2 = client.chat.completions.create(
+                model=MODEL,
+                messages=messages,
+                temperature=0.7,
+                max_tokens=150
+            )
+
+            reply = response2.choices[0].message.content
+            messages.append({"role": "assistant", "content": reply})
+
+        else:
+            # No tool needed — direct reply
+            reply = message.content
+            messages.append({"role": "assistant", "content": reply})
+
         return reply
 
     except Exception as e:
@@ -39,45 +169,17 @@ def get_reply(user_text):
         print(f"LLM error: {e}")
         return "Sorry, I ran into an issue. Please try again."
 
+
 def get_reply_streaming(user_text):
-    """
-    Stream LLM reply sentence by sentence.
-    Yields each sentence as soon as it's complete.
-    Lets TTS start speaking before full reply is done.
-    """
-    messages.append({"role": "user", "content": user_text})
-    full_reply = ""
-    current_sentence = ""
+    """Yield reply sentence by sentence for TTS."""
+    reply = get_reply_non_streaming(user_text)
+    sentences = reply.replace("!", ".").replace("?", ".").split(".")
+    for sentence in sentences:
+        sentence = sentence.strip()
+        if sentence:
+            yield sentence
 
-    try:
-        stream = client.chat.completions.create(
-            model=MODEL,
-            messages=messages,
-            temperature=0.7,
-            max_tokens=150,
-            stream=True   # this is the key change
-        )
 
-        for chunk in stream:
-            word = chunk.choices[0].delta.content
-            if word is None:
-                continue
-
-            current_sentence += word
-            full_reply += word
-
-            # yield a sentence when we hit a natural pause
-            if any(current_sentence.endswith(p) for p in [".", "!", "?"]):
-                yield current_sentence.strip()
-                current_sentence = ""
-
-        # yield anything remaining
-        if current_sentence.strip():
-            yield current_sentence.strip()
-
-        messages.append({"role": "assistant", "content": full_reply})
-
-    except Exception as e:
-        messages.pop()
-        print(f"LLM error: {e}")
-        yield "Sorry, I ran into an issue. Please try again."
+def get_history():
+    """Return full conversation history."""
+    return messages
