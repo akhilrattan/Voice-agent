@@ -19,6 +19,7 @@ MODEL="openai/gpt-4o-mini"
 
 
 # ── TOOL MAP ──────────────────────────────────────────────────────────────────
+#A dictionary that maps tool name strings to actual Python functions. When the LLM says "call search_web with query=Bitcoin price",
 TOOL_MAP = {
     "search_web":     lambda args: search_web(args["query"]),
     "query_document": lambda args: query_document(args["label"], args["question"]),
@@ -69,9 +70,11 @@ TOOLS = [
 def build_system_prompt():
     """Build system prompt dynamically based on what is currently loaded."""
 
+#This is a list comprehension inside `join`. It loops through every item in `loaded_documents` and builds one line per document:
+
     if loaded_documents:
         doc_lines = "\n".join([
-            f"- '{label}' ({len(chunks)} chunks)"
+            f"- '{label}' ({len(chunks)} chunks)"               
             for label, chunks in loaded_documents.items()
         ])
         doc_section = f"Documents loaded and ready to query:\n{doc_lines}"
@@ -79,21 +82,19 @@ def build_system_prompt():
         doc_section = "No documents loaded yet."
 
     return f"""
-You are Aria, a sharp voice assistant.
+You are Joi, a sharp voice assistant.
 Keep every reply under 2 sentences.
 Never use bullet points or markdown — you are speaking out loud.
 Speak naturally and concisely.
 
-You have three tools:
+You have two tools:
 - search_web: for current events, news, prices, weather
 - query_document: for questions about loaded PDF documents
-- query_context: for questions about pasted text
 
 {doc_section}
 
 Rules:
 - Use query_document when user asks about a loaded document — use exact label
-- Use query_context when user asks about pasted text
 - Use search_web for anything current or time-sensitive
 - Never make up answers — use a tool if unsure
 """
@@ -101,14 +102,10 @@ Rules:
 # ── CONVERSATION HISTORY ──────────────────────────────────────────────────────
 messages = [{"role": "system", "content": build_system_prompt()}]
 
-
 def refresh_system_prompt():
-    """
-    Rebuild and replace system prompt in place.
-    Call this after loading a document or adding context.
-    """
-    messages[0] = {"role": "system", "content": build_system_prompt()}
-
+    """Update system prompt only if documents are loaded."""
+    if loaded_documents:
+        messages[0] = {"role": "system", "content": build_system_prompt()}
 
 # ── REPLY FUNCTIONS ───────────────────────────────────────────────────────────
 def get_reply_non_streaming(user_text):
@@ -133,7 +130,7 @@ def get_reply_non_streaming(user_text):
             tool_name = tool_call.function.name
             tool_args = json.loads(tool_call.function.arguments)
 
-            print(f"[Aria is using tool: {tool_name}]")
+            print(f"[Joi is using tool: {tool_name}]")
 
             # Run the right function from TOOL_MAP
             tool_result = TOOL_MAP[tool_name](tool_args)
@@ -183,3 +180,4 @@ def get_reply_streaming(user_text):
 def get_history():
     """Return full conversation history."""
     return messages
+

@@ -1,12 +1,12 @@
 import os
 from voice.input import listen
-from llm.aria import get_reply_streaming, refresh_system_prompt
+from llm.joi import get_reply_streaming, refresh_system_prompt
 from txt_to_speech.tts import speak
 from web_search.tools import load_document
 
-print("\nAria is ready.")
+print("\Joi is ready.")
 print("  Press Enter with no text     → voice input")
-print("  Type a message               → chat with Aria")
+print("  Type a message               → chat with Joi")
 print("  Type 'load /path as label'   → load a PDF")
 print("  Type 'quit'                  → exit\n")
 
@@ -16,7 +16,7 @@ while True:
 
         # ── QUIT ───────────────────────────────────────────────────────────
         if user_input.lower() == "quit":
-            print("Aria: Goodbye!")
+            print("Joi: Goodbye!")
             break
 
         # ── LOAD FILE ──────────────────────────────────────────────────────
@@ -37,7 +37,7 @@ while True:
                 continue
 
             print(f"You said: {user_text}")
-            print("Aria: ", end="", flush=True)
+            print("Joi: ", end="", flush=True)
 
             for sentence in get_reply_streaming(user_text):
                 print(sentence, end=" ", flush=True)
@@ -47,7 +47,7 @@ while True:
 
         # ── TEXT INPUT ──────────────────────────────────────────────────────
         else:
-            print("Aria: ", end="", flush=True)
+            print("Joi: ", end="", flush=True)
 
             for sentence in get_reply_streaming(user_input):
                 print(sentence, end=" ", flush=True)
@@ -56,7 +56,7 @@ while True:
             print("\n")
 
     except KeyboardInterrupt:
-        print("\nAria: Goodbye!")
+        print("\Joi: Goodbye!")
         break
     except Exception as e:
         print(f"Error: {e}\n")

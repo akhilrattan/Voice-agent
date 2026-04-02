@@ -39,4 +39,4 @@ def speak(text):
 
     except Exception as e:
         print(f"TTS error: {e}")
-        print(f"Aria (text only): {text}")
+        print(f"Joi (text only): {text}")
