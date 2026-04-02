@@ -4,7 +4,7 @@ from llm.joi import get_reply_streaming, refresh_system_prompt
 from txt_to_speech.tts import speak
 from web_search.tools import load_document
 
-print("\Joi is ready.")
+print("/Joi is ready.")
 print("  Press Enter with no text     → voice input")
 print("  Type a message               → chat with Joi")
 print("  Type 'load /path as label'   → load a PDF")
@@ -56,7 +56,7 @@ while True:
             print("\n")
 
     except KeyboardInterrupt:
-        print("\Joi: Goodbye!")
+        print("/Joi: Goodbye!")
         break
     except Exception as e:
         print(f"Error: {e}\n")

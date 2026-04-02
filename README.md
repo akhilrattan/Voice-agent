@@ -1,10 +1,7 @@
-# joi — Voice AI Agent
+# Joi — Voice AI Agent
 
 A real-time voice AI assistant that listens, thinks, and speaks back.
-Built in Python, runs entirely on MacBook.
-
-## Demo
-
+Built in Python, runs entirely on local machine.
 
 ## What it does
 - Speak or type to Joi — she replies with voice
@@ -80,8 +77,8 @@ ELEVENLABS_API_KEY=your-key  # optional
 
 ## Usage
 ```
-Press Enter              → speak to Aria
-Type a message           → chat with Aria
+Press Enter              → speak to Joi
+Type a message           → chat with Joi
 load /path as label      → load a PDF document
 quit                     → exit
 ```
