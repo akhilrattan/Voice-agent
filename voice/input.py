@@ -26,6 +26,7 @@ def record_audio(duration=DURATION):
     write(TEMP_FILE, SAMPLE_RATE, audio)
     return audio
 
+ #np.abs(audio) takes the absolute value of every audio sample — audio waves go positive and negative, absolute value makes everything positive. .mean() averages all those values. The result is the average energy level of the recording. Low mean = quiet = probably silence. High mean = loud = speech detected
 def is_silent(audio):
     """Check if recording is basically silence."""
     energy = np.abs(audio).mean()
@@ -33,12 +34,14 @@ def is_silent(audio):
 
 def transcribe():
     """Transcribe audio file. Returns text or empty string."""
-    result = model.transcribe(
-        TEMP_FILE,
-        fp16=False,       # disable half precision — more stable on Mac
-        language="en"     # skip language detection — saves ~0.5s per call
-    )
-    return result["text"].strip()
+    """Transcribe an existing audio file. Returns text string."""
+    try:
+        result = model.transcribe(filepath)
+        return result["text"].strip()
+    except Exception as e:
+        print(f"Transcription failed: {e}")
+        return ""
+#result dictionary contains "text" (the transcript), "segments" (timestamps for each word), and "language" (detected language
 
 def listen():
     """Record and transcribe in one step. Returns text string."""

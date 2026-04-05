@@ -6,7 +6,7 @@ from web_search.tools import (
     search_web, query_document , loaded_documents
 )
 
-load_dotenv()  # loads .env file
+load_dotenv()  #loads .env file
 
 client = OpenAI(
     base_url="https://openrouter.ai/api/v1",
@@ -19,7 +19,8 @@ MODEL="openai/gpt-4o-mini"
 
 
 # ── TOOL MAP ──────────────────────────────────────────────────────────────────
-#A dictionary that maps tool name strings to actual Python functions. When the LLM says "call search_web with query=Bitcoin price",
+# A dictionary that maps tool name strings to actual Python functions. When the LLM says "call search_web with query=Bitcoin price",
+
 TOOL_MAP = {
     "search_web":     lambda args: search_web(args["query"]),
     "query_document": lambda args: query_document(args["label"], args["question"]),
@@ -175,7 +176,6 @@ def get_reply_streaming(user_text):
         sentence = sentence.strip()
         if sentence:
             yield sentence
-
 
 def get_history():
     """Return full conversation history."""

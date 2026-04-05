@@ -34,7 +34,8 @@ def speak(text):
             sd.play(chunk, samplerate=24000)
             sd.wait()
 
-        # Wait for background thread to finish in order to clean exit. Clean shutdown — you don't want orphan threads running after speak() exits.
+        # Wait for background thread to finish in order to clean exit. Clean shutdown — you don't want orphan threads running after speak() exits. so that other inputs from main doesnt collide
+        
         thread.join()
 
     except Exception as e:
