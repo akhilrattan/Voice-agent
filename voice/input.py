@@ -32,7 +32,7 @@ def is_silent(audio):
     energy = np.abs(audio).mean()
     return energy < SILENCE_THRESHOLD
 
-def transcribe():
+def transcribe(filepath):
     """Transcribe audio file. Returns text or empty string."""
     """Transcribe an existing audio file. Returns text string."""
     try:
