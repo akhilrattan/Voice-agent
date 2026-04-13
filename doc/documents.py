@@ -1,7 +1,7 @@
 import os
 from pypdf import PdfReader
 
-def load_pdf(filepath):
+def load_pdf(filepath, label=None):
     """
     Extract all text from a PDF file.
     Returns a single string of the full content.
